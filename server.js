@@ -8,16 +8,23 @@ app.use(cors());
 app.use(express.json());
 
 const REDIRECT_URI = 'https://newot-linkedin-proxy.onrender.com/linkedin/callback';
+const usedCodes = new Set(); // prevent duplicate code usage
 
 app.get('/linkedin/callback', async (req, res) => {
   const { code } = req.query;
 
-  console.log('Received code:', code);
-  console.log('Using redirect URI:', REDIRECT_URI);
+  console.log('Received code:', code?.slice(0, 20) + '...');
 
   if (!code) {
     return res.status(400).json({ error: 'No code provided' });
   }
+
+  // Prevent duplicate code usage
+  if (usedCodes.has(code)) {
+    console.log('Duplicate code detected, ignoring');
+    return res.status(400).json({ error: 'Code already used' });
+  }
+  usedCodes.add(code);
 
   try {
     const params = new URLSearchParams();
