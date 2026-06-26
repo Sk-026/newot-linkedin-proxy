@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 const REDIRECT_URI = 'https://newot-linkedin-proxy.onrender.com/linkedin/callback';
-const usedCodes = new Set(); // prevent duplicate code usage
+const usedCodes = new Set();
 
 app.get('/linkedin/callback', async (req, res) => {
   const { code } = req.query;
@@ -19,10 +19,15 @@ app.get('/linkedin/callback', async (req, res) => {
     return res.status(400).json({ error: 'No code provided' });
   }
 
-  // Prevent duplicate code usage
   if (usedCodes.has(code)) {
     console.log('Duplicate code detected, ignoring');
-    return res.status(400).json({ error: 'Code already used' });
+    return res.send(`
+      <html>
+        <body>
+          <p>Already processed. Please go back to the app.</p>
+        </body>
+      </html>
+    `);
   }
   usedCodes.add(code);
 
@@ -47,12 +52,30 @@ app.get('/linkedin/callback', async (req, res) => {
     const { access_token, expires_in } = response.data;
     console.log('Token exchange successful!');
 
-    res.redirect(
-      `newotai://linkedin/callback?access_token=${access_token}&expires_in=${expires_in}`
-    );
+    // Send HTML page that redirects to app via deep link
+    res.send(`
+      <html>
+        <head>
+          <title>Connecting to NeWOT AI...</title>
+          <meta http-equiv="refresh" content="0;url=newotai://linkedin/callback?access_token=${access_token}&expires_in=${expires_in}" />
+        </head>
+        <body>
+          <p>Redirecting back to NeWOT AI app...</p>
+          <a href="newotai://linkedin/callback?access_token=${access_token}&expires_in=${expires_in}">
+            Tap here if not redirected automatically
+          </a>
+        </body>
+      </html>
+    `);
   } catch (err) {
     console.error('Token exchange error:', err.response?.data || err.message);
-    res.status(500).json({ error: 'Token exchange failed', details: err.response?.data });
+    res.status(500).send(`
+      <html>
+        <body>
+          <p>Connection failed. Please go back to the app and try again.</p>
+        </body>
+      </html>
+    `);
   }
 });
 
